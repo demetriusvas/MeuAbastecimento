@@ -1,6 +1,56 @@
-// Dados armazenados localmente
-let refuels = JSON.parse(localStorage.getItem('refuels')) || [];
-let settings = JSON.parse(localStorage.getItem('settings')) || {};
+// // Dados armazenados localmente
+// let refuels = JSON.parse(localStorage.getItem('refuels')) || [];
+// let settings = JSON.parse(localStorage.getItem('settings')) || {};
+// let chartsInitialized = false;
+// let consumptionChart, expensesChart, priceVariationChart, consumptionVariationChart;
+
+
+// Import the functions you need from the SDKs you need
+// import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+// import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// const firebaseConfig = {
+// apiKey: "AIzaSyAkTXS7_85A74S-IUsBH5s8pu7-Q0uDoD0",
+// authDomain: "meuabastecimento.firebaseapp.com",
+// projectId: "meuabastecimento",
+// storageBucket: "meuabastecimento.firebasestorage.app",
+// messagingSenderId: "576128366588",
+// appId: "1:576128366588:web:cd053b0f28c382f53da479",
+// measurementId: "G-6NBWL7DM34"
+// };
+
+// // // Initialize Firebase
+// // const app = initializeApp(firebaseConfig);
+// // const analytics = getAnalytics(app);
+// // Inicializar Firebase
+// firebase.initializeApp(firebaseConfig);
+// const db = firebase.firestore();
+// console.log("Firebase conectado com sucesso!");
+
+// -----------------------------------------------------
+
+// Configuração do Firebase (substitua pelos valores do seu projeto no Firebase Console)
+const firebaseConfig = {
+    apiKey: "AIzaSyAkTXS7_85A74S-IUsBH5s8pu7-Q0uDoD0",
+    authDomain: "meuabastecimento.firebaseapp.com",
+    projectId: "meuabastecimento",
+    storageBucket: "meuabastecimento.firebasestorage.app",
+    messagingSenderId: "576128366588",
+    appId: "1:576128366588:web:cd053b0f28c382f53da479",
+    measurementId: "G-6NBWL7DM34"
+    };
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Dados armazenados no Firestore
+let refuels = [];
+let settings = {};
 let chartsInitialized = false;
 let consumptionChart, expensesChart, priceVariationChart, consumptionVariationChart;
 
@@ -46,9 +96,6 @@ const ui = {
 
 // Data Helpers
 const data = {
-    saveRefuels() {
-        localStorage.setItem('refuels', JSON.stringify(refuels));
-    },
     calculateConsumption(refuels) {
         const sorted = [...refuels].sort((a, b) => new Date(a.date) - new Date(b.date));
         const totalKm = sorted[sorted.length - 1]?.km - sorted[0]?.km || 0;
@@ -67,40 +114,68 @@ const data = {
     }
 };
 
+// Funções de Carregamento do Firestore
+async function loadRefuels() {
+    try {
+        const snapshot = await db.collection('refuels').get();
+        refuels = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        updateHistory();
+        updateDashboard();
+    } catch (error) {
+        console.error('Erro ao carregar abastecimentos:', error);
+    }
+}
+
+async function loadSettings() {
+    try {
+        const snapshot = await db.collection('settings').get();
+        if (!snapshot.empty) {
+            settings = snapshot.docs[0].data();
+            document.getElementById('user-name').value = settings.name || '';
+            document.getElementById('vehicle-name').value = settings.vehicleName || '';
+            document.getElementById('vehicle-model').value = settings.vehicleModel || '';
+            document.getElementById('fuel-preference').value = settings.fuelPreference || '';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+    }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    initializeTheme();
-    initializeCharts();
-    updateHistory();
-    loadSettings();
-    checkMaintenance();
-    updateDashboard();
-
     if (!elements.refuelForm) {
         console.error('Elemento refuel-form não encontrado no DOM');
+        return;
     }
-});
 
-// Menu hamburger
-elements.hamburger.addEventListener('click', () => {
-    elements.navMenu.classList.toggle('active');
-});
+    loadRefuels();
+    loadSettings();
+    initializeTheme();
+    initializeCharts();
+    checkMaintenance();
 
-// Navegação por abas
-elements.navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const tabId = link.getAttribute('data-tab');
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.getElementById(`${tabId}-tab`).classList.add('active');
-        document.getElementById('current-breadcrumb').textContent = link.textContent;
-        elements.navMenu.classList.remove('active');
-        if (tabId === 'dashboard' || tabId === 'stats') updateCharts();
+    // Menu hamburger
+    elements.hamburger.addEventListener('click', () => {
+        elements.navMenu.classList.toggle('active');
+    });
+
+    // Navegação por abas
+    elements.navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tabId = link.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            document.getElementById('current-breadcrumb').textContent = link.textContent;
+            elements.navMenu.classList.remove('active');
+            if (tabId === 'dashboard' || tabId === 'stats') updateCharts();
+        });
     });
 });
 
 // Alternar tema
 function initializeTheme() {
+    if (!elements.themeToggle) return;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
@@ -109,13 +184,15 @@ function initializeTheme() {
     }
 }
 
-elements.themeToggle.addEventListener('change', () => {
-    document.documentElement.toggleAttribute('data-theme');
-    localStorage.setItem('theme', elements.themeToggle.checked ? 'dark' : 'light');
-});
+if (elements.themeToggle) {
+    elements.themeToggle.addEventListener('change', () => {
+        document.documentElement.toggleAttribute('data-theme');
+        localStorage.setItem('theme', elements.themeToggle.checked ? 'dark' : 'light');
+    });
+}
 
 // Formulário de registro
-elements.refuelForm.addEventListener('submit', (e) => {
+elements.refuelForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const date = document.getElementById('date').value;
@@ -128,7 +205,7 @@ elements.refuelForm.addEventListener('submit', (e) => {
     const km = parseFloat(kmInput);
     const price = parseFloat(priceInput.replace(',', '.'));
     const total = parseFloat(totalInput.replace(',', '.'));
-    const liters = total / price; // Cálculo automático dos litros
+    const liters = total / price;
 
     if (!date) {
         ui.showAlert('Por favor, preencha a data.', 'danger');
@@ -147,33 +224,26 @@ elements.refuelForm.addEventListener('submit', (e) => {
         return;
     }
 
-    const refuel = {
-        id: Date.now(),
-        date,
-        km,
-        price,
-        liters,
-        total,
-        fuelType,
-        notes
-    };
+    const refuel = { date, km, price, liters, total, fuelType, notes };
 
-    refuels.push(refuel);
-    data.saveRefuels();
-    updateDashboard();
-    updateHistory();
-    ui.showAlert('Abastecimento registrado com sucesso!', 'success');
-    elements.refuelForm.reset();
+    try {
+        await db.collection('refuels').add(refuel);
+        ui.showAlert('Abastecimento registrado com sucesso!', 'success');
+        elements.refuelForm.reset();
+        await loadRefuels();
+    } catch (error) {
+        ui.showAlert('Erro ao salvar abastecimento: ' + error.message, 'danger');
+    }
 });
 
 // Modal de edição
 let editingId = null;
-elements.editForm.addEventListener('submit', (e) => {
+elements.editForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const km = parseFloat(document.getElementById('edit-km').value);
     const price = parseFloat(document.getElementById('edit-price').value.replace(',', '.'));
     const total = parseFloat(document.getElementById('edit-total').value.replace(',', '.'));
-    const liters = total / price; // Cálculo automático dos litros
+    const liters = total / price;
 
     if (km < 0 || price <= 0 || total <= 0) {
         ui.showAlert('Valores inválidos! Certifique-se de que todos os campos numéricos sejam positivos.', 'danger');
@@ -181,7 +251,6 @@ elements.editForm.addEventListener('submit', (e) => {
     }
 
     const updatedRefuel = {
-        id: editingId,
         date: document.getElementById('edit-date').value,
         km: km,
         price: price,
@@ -190,12 +259,15 @@ elements.editForm.addEventListener('submit', (e) => {
         fuelType: document.getElementById('edit-fuel-type').value,
         notes: document.getElementById('edit-notes').value
     };
-    refuels = refuels.map(r => r.id === editingId ? updatedRefuel : r);
-    data.saveRefuels();
-    updateDashboard();
-    updateHistory();
-    elements.modal.style.display = 'none';
-    ui.showAlert('Abastecimento atualizado com sucesso!', 'success');
+
+    try {
+        await db.collection('refuels').doc(editingId).update(updatedRefuel);
+        elements.modal.style.display = 'none';
+        ui.showAlert('Abastecimento atualizado com sucesso!', 'success');
+        await loadRefuels();
+    } catch (error) {
+        ui.showAlert('Erro ao atualizar abastecimento: ' + error.message, 'danger');
+    }
 });
 
 elements.closeModal.forEach(btn => {
@@ -257,7 +329,7 @@ function updateHistory() {
             <td>${consumption ? consumption.toFixed(2) + ' km/l' : '--'}</td>
             <td class="action-buttons">
                 <button onclick="editRefuel(${r.id})"><i class="fas fa-edit"></i></button>
-                <button class="delete" onclick="deleteRefuel(${r.id})"><i class="fas fa-trash"></i></button>
+                <button class="delete" onclick="deleteRefuel('${r.id}')"><i class="fas fa-trash"></i></button>
             </td>
         `;
         elements.tableBody.appendChild(tr);
@@ -276,15 +348,17 @@ function editRefuel(id) {
     elements.modal.style.display = 'block';
 }
 
-function deleteRefuel(id) {
+window.deleteRefuel = async (id) => {
     if (confirm('Tem certeza que deseja excluir este abastecimento?')) {
-        refuels = refuels.filter(r => r.id !== id);
-        data.saveRefuels();
-        updateDashboard();
-        updateHistory();
-        ui.showAlert('Abastecimento excluído com sucesso!', 'success');
+        try {
+            await db.collection('refuels').doc(id).delete();
+            ui.showAlert('Abastecimento excluído com sucesso!', 'success');
+            await loadRefuels();
+        } catch (error) {
+            ui.showAlert('Erro ao excluir abastecimento: ' + error.message, 'danger');
+        }
     }
-}
+};
 
 // Dashboard e gráficos
 function initializeCharts() {
@@ -391,7 +465,7 @@ elements.clearStatsFilters.addEventListener('click', () => {
 });
 
 // Configurações
-elements.userSettingsForm.addEventListener('submit', (e) => {
+elements.userSettingsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     settings = {
         name: document.getElementById('user-name').value,
@@ -399,16 +473,19 @@ elements.userSettingsForm.addEventListener('submit', (e) => {
         vehicleModel: document.getElementById('vehicle-model').value,
         fuelPreference: document.getElementById('fuel-preference').value
     };
-    localStorage.setItem('settings', JSON.stringify(settings));
-    ui.showAlert('Configurações salvas com sucesso!', 'success');
-});
 
-function loadSettings() {
-    if (settings.name) document.getElementById('user-name').value = settings.name;
-    if (settings.vehicleName) document.getElementById('vehicle-name').value = settings.vehicleName;
-    if (settings.vehicleModel) document.getElementById('vehicle-model').value = settings.vehicleModel;
-    if (settings.fuelPreference) document.getElementById('fuel-preference').value = settings.fuelPreference;
-}
+    try {
+        const settingsSnapshot = await db.collection('settings').get();
+        if (settingsSnapshot.empty) {
+            await db.collection('settings').add(settings);
+        } else {
+            await db.collection('settings').doc(settingsSnapshot.docs[0].id).update(settings);
+        }
+        ui.showAlert('Configurações salvas com sucesso!', 'success');
+    } catch (error) {
+        ui.showAlert('Erro ao salvar configurações: ' + error.message, 'danger');
+    }
+});
 
 // Backup e restauração
 elements.backupBtn.addEventListener('click', () => {
@@ -426,19 +503,35 @@ elements.restoreBtn.addEventListener('click', () => {
     elements.restoreFile.click();
 });
 
-elements.restoreFile.addEventListener('change', (e) => {
+elements.restoreFile.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
         const data = JSON.parse(event.target.result);
         refuels = data.refuels || [];
         settings = data.settings || {};
-        data.saveRefuels();
-        localStorage.setItem('settings', JSON.stringify(settings));
-        updateDashboard();
-        updateHistory();
-        loadSettings();
-        ui.showAlert('Dados restaurados com sucesso!', 'success');
+        
+        try {
+            // Limpar dados existentes no Firestore
+            const refuelsSnapshot = await db.collection('refuels').get();
+            const settingsSnapshot = await db.collection('settings').get();
+            refuelsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
+            settingsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
+
+            // Restaurar abastecimentos
+            for (const refuel of refuels) {
+                await db.collection('refuels').add(refuel);
+            }
+            // Restaurar configurações
+            if (Object.keys(settings).length > 0) {
+                await db.collection('settings').add(settings);
+            }
+            await loadRefuels();
+            await loadSettings();
+            ui.showAlert('Dados restaurados com sucesso!', 'success');
+        } catch (error) {
+            ui.showAlert('Erro ao restaurar dados: ' + error.message, 'danger');
+        }
     };
     reader.readAsText(file);
 });
@@ -484,15 +577,22 @@ elements.exportPdfBtn.addEventListener('click', () => {
     doc.save(`fuel_history_${new Date().toISOString().split('T')[0]}.pdf`);
 });
 
-elements.clearDataBtn.addEventListener('click', () => {
+elements.clearDataBtn.addEventListener('click', async () => {
     if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
-        refuels = [];
-        settings = {};
-        localStorage.clear();
-        updateDashboard();
-        updateHistory();
-        loadSettings();
-        ui.showAlert('Todos os dados foram limpos!', 'warning');
+        try {
+            const refuelsSnapshot = await db.collection('refuels').get();
+            const settingsSnapshot = await db.collection('settings').get();
+            refuelsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
+            settingsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
+            refuels = [];
+            settings = {};
+            updateDashboard();
+            updateHistory();
+            loadSettings();
+            ui.showAlert('Todos os dados foram limpos!', 'warning');
+        } catch (error) {
+            ui.showAlert('Erro ao limpar dados: ' + error.message, 'danger');
+        }
     }
 });
 

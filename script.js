@@ -88,6 +88,7 @@ async function loadRefuels() {
         updateDashboard();
     } catch (error) {
         console.error('Erro ao carregar abastecimentos:', error);
+        ui.showAlert('Erro ao carregar abastecimentos: ' + error.message, 'danger');
     }
 }
 
@@ -103,6 +104,7 @@ async function loadSettings() {
         }
     } catch (error) {
         console.error('Erro ao carregar configurações:', error);
+        ui.showAlert('Erro ao carregar configurações: ' + error.message, 'danger');
     }
 }
 
@@ -285,7 +287,7 @@ function updateHistory() {
         const consumption = prevKm ? (r.km - prevKm) / r.liters : 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${new Date(r.date).toLocaleDateString('pt-BR')}</td>
+            <td>${r.date.split('-').reverse().join('/')}</td>
             <td>${r.km.toFixed(1)}</td>
             <td>${r.fuelType}</td>
             <td>${r.liters.toFixed(2)}</td>
@@ -367,11 +369,11 @@ function updateCharts(filteredRefuels = refuels) {
     expensesChart.data.datasets[0].data = Object.values(monthlyData).map(m => m.totalSpent);
     expensesChart.update();
 
-    priceVariationChart.data.labels = sortedRefuels.map(r => new Date(r.date).toLocaleDateString('pt-BR'));
+    priceVariationChart.data.labels = sortedRefuels.map(r => r.date.split('-').reverse().join('/'));
     priceVariationChart.data.datasets[0].data = sortedRefuels.map(r => r.price);
     priceVariationChart.update();
 
-    consumptionVariationChart.data.labels = sortedRefuels.slice(1).map(r => new Date(r.date).toLocaleDateString('pt-BR'));
+    consumptionVariationChart.data.labels = sortedRefuels.slice(1).map(r => r.date.split('-').reverse().join('/'));
     consumptionVariationChart.data.datasets[0].data = sortedRefuels.slice(1).map((r, i) => 
         (r.km - sortedRefuels[i].km) / r.liters || 0);
     consumptionVariationChart.update();
@@ -391,7 +393,7 @@ function updateDashboard() {
     ui.updateCard('total-spent', `R$ ${totalSpent.toFixed(2).replace('.', ',')}`);
     ui.updateCard('total-km', `${totalKm.toFixed(1)} km`);
     ui.updateCard('last-refuel', lastRefuel.fuelType);
-    ui.updateCard('last-refuel-date', new Date(lastRefuel.date).toLocaleDateString('pt-BR'));
+    ui.updateCard('last-refuel-date', lastRefuel.date.split('-').reverse().join('/'));
 
     updateCharts();
 }
@@ -507,7 +509,7 @@ elements.exportCsvBtn.addEventListener('click', () => {
     const rows = refuels.map(r => {
         const consumption = refuels.findIndex(x => x.id === r.id) > 0 ?
             (r.km - refuels[refuels.findIndex(x => x.id === r.id) - 1].km) / r.liters : 0;
-        return `${new Date(r.date).toLocaleDateString('pt-BR')},${r.km},${r.fuelType},${r.liters},${r.price.toFixed(3).replace('.', ',')},${r.total.toFixed(2).replace('.', ',')},${consumption ? consumption.toFixed(2) : ''}`;
+        return `${r.date.split('-').reverse().join('/')},${r.km},${r.fuelType},${r.liters},${r.price.toFixed(3).replace('.', ',')},${r.total.toFixed(2).replace('.', ',')},${consumption ? consumption.toFixed(2) : ''}`;
     }).join('\n');
     const csv = headers + rows;
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -529,7 +531,7 @@ elements.exportPdfBtn.addEventListener('click', () => {
             const consumption = refuels.findIndex(x => x.id === r.id) > 0 ?
                 (r.km - refuels[refuels.findIndex(x => x.id === r.id) - 1].km) / r.liters : 0;
             return [
-                new Date(r.date).toLocaleDateString('pt-BR'),
+                r.date.split('-').reverse().join('/'),
                 r.km.toFixed(1),
                 r.fuelType,
                 r.liters.toFixed(2),

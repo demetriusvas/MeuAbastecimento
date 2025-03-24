@@ -34,6 +34,17 @@
 // -----------------------------------------------------
 
 // Configuração do Firebase (substitua pelos valores do seu projeto no Firebase Console)
+// const firebaseConfig = {
+//     apiKey: "AIzaSyAkTXS7_85A74S-IUsBH5s8pu7-Q0uDoD0",
+//     authDomain: "meuabastecimento.firebaseapp.com",
+//     projectId: "meuabastecimento",
+//     storageBucket: "meuabastecimento.firebasestorage.app",
+//     messagingSenderId: "576128366588",
+//     appId: "1:576128366588:web:cd053b0f28c382f53da479",
+//     measurementId: "G-6NBWL7DM34"
+//     };
+// ------------------------------------------------------------
+// Configuração do Firebase (substitua pelos valores do seu projeto no Firebase Console)
 const firebaseConfig = {
     apiKey: "AIzaSyAkTXS7_85A74S-IUsBH5s8pu7-Q0uDoD0",
     authDomain: "meuabastecimento.firebaseapp.com",
@@ -42,7 +53,7 @@ const firebaseConfig = {
     messagingSenderId: "576128366588",
     appId: "1:576128366588:web:cd053b0f28c382f53da479",
     measurementId: "G-6NBWL7DM34"
-    };
+};
 
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
@@ -328,7 +339,7 @@ function updateHistory() {
             <td>R$ ${r.total.toFixed(2).replace('.', ',')}</td>
             <td>${consumption ? consumption.toFixed(2) + ' km/l' : '--'}</td>
             <td class="action-buttons">
-                <button onclick="editRefuel(${r.id})"><i class="fas fa-edit"></i></button>
+                <button onclick="editRefuel('${r.id}')"><i class="fas fa-edit"></i></button>
                 <button class="delete" onclick="deleteRefuel('${r.id}')"><i class="fas fa-trash"></i></button>
             </td>
         `;

@@ -24,7 +24,6 @@ const elements = {
     hamburger: document.querySelector('.hamburger'),
     navMenu: document.querySelector('nav ul'),
     navLinks: document.querySelectorAll('.nav-link'),
-    themeToggle: document.getElementById('theme-toggle'),
     refuelForm: document.getElementById('refuel-form'),
     editForm: document.getElementById('edit-refuel-form'),
     modal: document.getElementById('edit-modal'),
@@ -42,7 +41,8 @@ const elements = {
     restoreFile: document.getElementById('restore-file'),
     exportCsvBtn: document.getElementById('export-csv-btn'),
     exportPdfBtn: document.getElementById('export-pdf-btn'),
-    clearDataBtn: document.getElementById('clear-data-btn')
+    clearDataBtn: document.getElementById('clear-data-btn'),
+    registerBtn: document.getElementById('register-btn')
 };
 
 // UI Helpers
@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadRefuels();
     loadSettings();
-    initializeTheme();
     initializeCharts();
     checkMaintenance();
 
@@ -138,25 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabId === 'dashboard' || tabId === 'stats') updateCharts();
         });
     });
-});
 
-// Alternar tema
-function initializeTheme() {
-    if (!elements.themeToggle) return;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        elements.themeToggle.checked = true;
-    }
-}
-
-if (elements.themeToggle) {
-    elements.themeToggle.addEventListener('change', () => {
-        document.documentElement.toggleAttribute('data-theme');
-        localStorage.setItem('theme', elements.themeToggle.checked ? 'dark' : 'light');
+    // Botão Registrar no Dashboard
+    elements.registerBtn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById('register-tab').classList.add('active');
+        document.getElementById('current-breadcrumb').textContent = 'Registrar';
     });
-}
+});
 
 // Formulário de registro
 elements.refuelForm.addEventListener('submit', async (e) => {
@@ -332,19 +320,23 @@ function initializeCharts() {
     try {
         consumptionChart = new Chart(document.getElementById('consumptionChart'), {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'Consumo (km/l)', data: [], borderColor: '#3498db', fill: false }] }
+            data: { labels: [], datasets: [{ label: 'Consumo (km/l)', data: [], borderColor: '#3498db', fill: false }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
         expensesChart = new Chart(document.getElementById('expensesChart'), {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Gastos (R$)', data: [], backgroundColor: '#2ecc71' }] }
+            data: { labels: [], datasets: [{ label: 'Gastos (R$)', data: [], backgroundColor: '#2ecc71' }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
         priceVariationChart = new Chart(document.getElementById('priceVariationChart'), {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'Preço por Litro (R$)', data: [], borderColor: '#e74c3c', fill: false }] }
+            data: { labels: [], datasets: [{ label: 'Preço por Litro (R$)', data: [], borderColor: '#e74c3c', fill: false }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
         consumptionVariationChart = new Chart(document.getElementById('consumptionVariationChart'), {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'Consumo (km/l)', data: [], borderColor: '#f39c12', fill: false }] }
+            data: { labels: [], datasets: [{ label: 'Consumo (km/l)', data: [], borderColor: '#f39c12', fill: false }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
         chartsInitialized = true;
     } catch (error) {
@@ -479,17 +471,14 @@ elements.restoreFile.addEventListener('change', async (e) => {
         settings = data.settings || {};
         
         try {
-            // Limpar dados existentes no Firestore
             const refuelsSnapshot = await db.collection('refuels').get();
             const settingsSnapshot = await db.collection('settings').get();
             refuelsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
             settingsSnapshot.docs.forEach(async (doc) => await doc.ref.delete());
 
-            // Restaurar abastecimentos
             for (const refuel of refuels) {
                 await db.collection('refuels').add(refuel);
             }
-            // Restaurar configurações
             if (Object.keys(settings).length > 0) {
                 await db.collection('settings').add(settings);
             }
